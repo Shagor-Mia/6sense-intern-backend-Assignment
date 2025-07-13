@@ -6,7 +6,7 @@ export interface IProduct extends Document {
   description: string;
   price: number;
   discount: number;
-  images: string[]; // Changed from 'image' to 'images' (array of URLs)
+  image: string; // Changed from 'image' to 'images' (array of URLs)
   status: "In Stock" | "Stock Out";
   productCode: string;
   category: ICategory["_id"];
@@ -19,7 +19,7 @@ const ProductSchema: Schema = new Schema(
     description: { type: String, required: true },
     price: { type: Number, required: true, min: 0 },
     discount: { type: Number, required: true, min: 0, max: 100, default: 0 },
-    images: [{ type: String, required: true }], // Changed to array of strings
+    image: { type: String, required: true }, // Changed to array of strings
     status: { type: String, enum: ["In Stock", "Stock Out"], required: true },
     productCode: { type: String, required: true, unique: true },
     category: { type: Schema.Types.ObjectId, ref: "Category", required: true },

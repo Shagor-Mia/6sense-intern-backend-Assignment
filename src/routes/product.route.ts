@@ -4,19 +4,23 @@ import {
   updateProduct,
   getProducts,
 } from "../controllers/product.controller";
-import { upload } from "../middlewares/multer"; // Multer setup
-import { uploadToCloudinary } from "../middlewares/uploader";
+import { upload } from "../middlewares/multer";
 
 const router = express.Router();
 
-// POST /api/products -> create product (with up to 5 images)
-// GET /api/products -> get all products with optional filters
 router
   .route("/")
-  .post(upload.array("images", 5), uploadToCloudinary, createProduct)
+  .post(
+    upload.single("image"),
+    (req, res, next) => {
+      console.log("Multer file log:", req.file);
+      next();
+    },
+
+    createProduct
+  )
   .get(getProducts);
 
-// PUT /api/products/:id -> update description, discount, and status
 router.route("/:id").put(updateProduct);
 
 export default router;

@@ -1,49 +1,63 @@
-import { asyncHandler, errorHandler } from "./../middlewares/errorHandler";
+import fs from "fs";
+import { asyncHandler } from "./../middlewares/errorHandler";
 import { Request, Response, NextFunction } from "express";
-import Product, { IProduct } from "../models/product.model";
+import Product from "../models/product.model";
 import Category from "../models/category.model";
 import { generateProductCode } from "../utils/productCodeGenerater";
 import cloudinary from "../utils/cloudinary";
+import path from "path";
 
 export const createProduct = asyncHandler(
   async (req: Request, res: Response) => {
     const { name, description, price, discount, status, category } = req.body;
-    const images = req.body.images; // from middleware
 
-    if (!images || images.length === 0) {
+    if (!req.file) {
       res.status(400);
-      throw new Error("At least one image is required for the product.");
+      throw new Error("Image file is required.");
     }
 
+    // Upload image to Cloudinary
+    const localFilePath = path.resolve(req.file.path);
+    let uploadResult;
+    try {
+      uploadResult = await cloudinary.uploader.upload(localFilePath, {
+        folder: "product-images",
+      });
+    } catch (err) {
+      // Cleanup local file on error
+      fs.unlinkSync(localFilePath);
+      res.status(500);
+      throw new Error("Failed to upload image to Cloudinary.");
+    }
+
+    // Delete local file after successful upload
+    fs.unlinkSync(localFilePath);
+
+    // Validate category exists
     const categoryExists = await Category.findById(category);
     if (!categoryExists) {
-      // If category is invalid, clean up uploaded images from Cloudinary
-      for (const imageUrl of images) {
-        const publicId = imageUrl.split("/").pop()?.split(".")[0];
-        if (publicId) {
-          await cloudinary.uploader.destroy(`product-images/${publicId}`);
-        }
-      }
+      // Delete uploaded image on Cloudinary if category invalid
+      await cloudinary.uploader.destroy(uploadResult.public_id);
       res.status(400);
       throw new Error("Invalid category");
     }
 
-    const productCode = generateProductCode(name);
-    // Check for product code uniqueness and handle potential collision (though unlikely)
+    // Generate unique productCode
+    const baseProductCode = generateProductCode(name);
     let productCodeCounter = 0;
-    let uniqueProductCode = productCode;
+    let uniqueProductCode = baseProductCode;
     while (await Product.findOne({ productCode: uniqueProductCode })) {
       productCodeCounter++;
-      // Append a counter to ensure uniqueness if the base code collides
-      uniqueProductCode = `${productCode}-${productCodeCounter}`;
+      uniqueProductCode = `${baseProductCode}-${productCodeCounter}`;
     }
 
+    // Create product record with uploaded image URL
     const product = await Product.create({
       name,
       description,
       price,
       discount,
-      images, // Use the uploaded image URLs
+      image: uploadResult.secure_url, // array with single image URL
       status,
       productCode: uniqueProductCode,
       category,
@@ -52,7 +66,6 @@ export const createProduct = asyncHandler(
     res.status(201).json(product);
   }
 );
-
 export const updateProduct = asyncHandler(
   async (req: Request, res: Response) => {
     // Only description, discount, and status can be updated via this endpoint per instructions

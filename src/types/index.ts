@@ -9,7 +9,7 @@ export interface IProduct {
   description: string;
   price: number;
   discount: number;
-  images: string[]; // Changed from 'image' to 'images'
+  image: string; // Changed from 'image' to 'images'
   status: "In Stock" | "Stock Out";
   productCode: string;
   category: ICategory["_id"];
