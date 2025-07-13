@@ -5,7 +5,7 @@
   "type": "commonjs",
   "scripts": {
     "dev": "ts-node-dev --files src/index.ts",
-    "build": "tsc --watch",
+    "build": "tsc",
     "start": "node dist/index.js"
   },
   "keywords": [],
